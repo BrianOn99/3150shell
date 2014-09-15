@@ -1,0 +1,38 @@
+#########
+3150shell
+#########
+
+About
+=====
+
+A simple shell for csci3150.
+
+The major components are:
+mainloop =>
+        reader
+        parser =>
+                tokenizer
+        interprter =>
+                command classifier
+                builtin commands  (not yet exist)
+                external program laucher  (not yet exist)
+
+In the time of writing, it only classify command and print tokens.
+
+Compile
+=======
+
+./make
+
+Coding convention
+=================
+
+I loosely follow the guide for linux kernel:
+https://www.kernel.org/doc/Documentation/CodingStyle
+
+In short,
+        [1] 8 spaces for indentation
+        [2] space around operators, like: bar = 3 + 4;
+
+Convention for this program:
+        Comments of "TODO" are inserted, for codes that are not fully implemented

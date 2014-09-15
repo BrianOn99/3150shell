@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include "interpreter.h"
 
-char *classify(*char given_cmdname)
+char *classify(char *given_cmdname)
 {
         static struct cmdmapping bn_cmdmap[] =
         {
@@ -17,20 +18,22 @@ char *classify(*char given_cmdname)
          */
         struct cmdmapping *map_entry = bn_cmdmap;
         while (map_entry->cmdname){
-                if (strcmp(map_entry->cmdname, given))
+                if (!strcmp(map_entry->cmdname, given_cmdname))
                         return "builtin";
-        return "external";
+                map_entry++;
         } 
+
+        return "external";
 }
 
-}
 void interpreter(struct parsetree cmd_info)
 {
         char **token = cmd_info.cmd;
         
-        if (token[0] != NULL)
+        if (token[0] != NULL){
                 char *cmd_type = classify(token[0]);
-                printf("Token %d: %s (%s)\n", 0, token[0], cmd_type);
+                printf("Token %d: %s (%s)\n", 1, token[0], cmd_type);
+        }
         for (int i = 1; token[i] != NULL; i++)
                 printf("Token %d: %s\n", i + 1, token[i]);
 }

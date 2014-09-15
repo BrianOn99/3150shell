@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include "interpreter.h"
 
-void interpreter(struct parsetree cmd_info)
+char *classify(*char given_cmdname)
 {
-        char **token = cmd_info.cmd;
-
-        static cmdmapping bn_cmdmap[] =
+        static struct cmdmapping bn_cmdmap[] =
         {
                 {"cd", NULL},
                 {"exit", NULL},
@@ -14,6 +12,25 @@ void interpreter(struct parsetree cmd_info)
                 {NULL, NULL}
         };
 
-        for (int i = 0; token[i] != NULL; i++)
+        /*
+         *TODO: check actual requirement of the string, I am lazy
+         */
+        struct cmdmapping *map_entry = bn_cmdmap;
+        while (map_entry->cmdname){
+                if (strcmp(map_entry->cmdname, given))
+                        return "builtin";
+        return "external";
+        } 
+}
+
+}
+void interpreter(struct parsetree cmd_info)
+{
+        char **token = cmd_info.cmd;
+        
+        if (token[0] != NULL)
+                char *cmd_type = classify(token[0]);
+                printf("Token %d: %s (%s)\n", 0, token[0], cmd_type);
+        for (int i = 1; token[i] != NULL; i++)
                 printf("Token %d: %s\n", i + 1, token[i]);
 }

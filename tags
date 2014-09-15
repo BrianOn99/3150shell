@@ -1,0 +1,28 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+-std	Makefile	/^	gcc -g --std=gnu99 -I. -c $<$/;"	m
+CMD_BUF_SIZE	src/main.c	9;"	d	file:
+MAX_CMD_LEN	src/parser.h	4;"	d
+PARSE_H	src/parser.h	2;"	d
+TOKEN_ARRAY_SIZE	src/parser.c	4;"	d	file:
+bn_cd	src/interpreter.c	/^int bn_cd(char* cmdargv[])$/;"	f
+classify	src/interpreter.c	/^char *classify(char *given_cmdname)$/;"	f
+cmd	src/parser.h	/^        char **cmd;$/;"	m	struct:parsetree
+cmd_len	src/parser.h	/^        int cmd_len;$/;"	m	struct:parsetree
+cmdfunction	src/interpreter.h	/^        int (*cmdfunction)(char**);$/;"	m	struct:cmdmapping
+cmdmapping	src/interpreter.h	/^struct cmdmapping {$/;"	s
+cmdname	src/interpreter.h	/^        char *cmdname;$/;"	m	struct:cmdmapping
+getcmdline	src/main.c	/^void getcmdline(char *buffer, size_t size)$/;"	f
+initialize	src/main.c	/^void initialize()$/;"	f
+interpreter	src/interpreter.c	/^void interpreter(struct parsetree cmd_info)$/;"	f
+main	src/main.c	/^void main(void)$/;"	f
+main	src/test.c	/^void main(void)$/;"	f
+mainloop	src/main.c	/^void mainloop()$/;"	f
+parser	src/parser.c	/^void parser(char cmdline[], struct parsetree *cmd_info)$/;"	f
+parsetree	src/parser.h	/^struct parsetree {$/;"	s
+token_array	src/parser.c	/^static char *token_array[TOKEN_ARRAY_SIZE];$/;"	v	file:
+tokenize	src/parser.c	/^int tokenize(char cmdline[], char *token_store[])$/;"	f

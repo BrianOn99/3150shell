@@ -5,10 +5,10 @@
 
 struct parsetree {
         char **cmd;
-        int cmd_num;
+        int cmd_len;
 };
 
-char **tokenize(char cmdline[]);
+int tokenize(char cmdline[], char *token_store[]);
 void parser(char cmdline[], struct parsetree *cmd_info);
 
 #endif

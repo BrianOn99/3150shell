@@ -5,14 +5,14 @@
 
 static char *token_array[TOKEN_ARRAY_SIZE];
 
-char **tokenize(char cmdline[])
+int tokenize(char cmdline[], char *token_store[])
 {
-        token_array[0] = strtok(cmdline, " ");
+        token_store[0] = strtok(cmdline, " ");
 
         for (int i = 1; i < TOKEN_ARRAY_SIZE; i++){
-                token_array[i] = strtok(NULL, " ");
-                if (token_array[i] == NULL)
-                        return token_array;
+                token_store[i] = strtok(NULL, " ");
+                if (token_store[i] == NULL)
+                        return i - 1;
         }
 
         // we should never get here
@@ -22,6 +22,7 @@ char **tokenize(char cmdline[])
 void parser(char cmdline[], struct parsetree *cmd_info)
 {
         // it should be more compllex in phase 2
-        cmd_info->cmd = tokenize(cmdline);
+        cmd_info->cmd_len = tokenize(cmdline, token_array);
+        cmd_info->cmd = token_array;
 }
 

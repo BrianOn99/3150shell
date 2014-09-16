@@ -10,12 +10,21 @@
 int bn_cd(int cmdargc, char* cmdargv[])
 {
         if (cmdargc != 1){
-                fprintf(stderr, "cd: wrong number of arguments\n");
+                /*
+                 * Error SHOULD be printed to stderr, but P.21 require stdout
+                 * I am Very reluctant to do so, it is ugly
+                 */
+                fprintf(stdout, "cd: wrong number of arguments\n");
                 return 1;
         }
         /* TODO: really do a cd */
 
         return 0;
+}
+
+int bn_exit(int cmdargc, char* cmdargv[])
+{
+        /* TODO: exit (P.20) */
 }
 
 /* 
@@ -28,7 +37,7 @@ char *classify(char *given_cmdname, cmd_evaluater *backeval)
         {
                 /* TODO: store the function instead of NULL */
                 {"cd", bn_cd},
-                {"exit", NULL},
+                {"exit", bn_exit},
                 {"fg", NULL},
                 {"jobs", NULL},
                 {NULL, NULL}

@@ -8,23 +8,49 @@
 
 #define CMD_BUF_SIZE (MAX_CMD_LEN * sizeof(char))
 
+/*
+ * read a line fron stdin and store it in buffer, without terminating
+ * newline character
+ */
 void getcmdline(char *buffer, size_t size)
 {
+
+        char *ret = fgets(buffer, size, stdin);
+        if (!ret){
+                if (ferror(stdin))
+                        fprintf(stderr, "error reading input\n");
+                else
+                        /* ctrl-d pressed */
+                        /* TODO: exit the shell */
+                        buffer[0] = '\0';
+        } else{
+                buffer[strlen(buffer) - 1] ='\0';
+        }
+
+
+        /* this is old version using bare system call, but error prone */
+        /*
         int read_size = read(0, buffer, size-1);
         if (read_size == -1)
                 perror("getcmdline");
         else if (read_size == 0)
-                // TODO: ctrl-D is pressed in the beginning
                 buffer[0] = '\0';
         else
                 buffer[read_size - 1] = '\0';
+        */
 }
 
+void pr_prompt()
+{
+        /* TODO: print out the prompt (See Specification P.4) */
+}
 void initialize()
 {
         /*
-         * TODO: (phase 2)
-         * initialize env PATH
+         * TODO: (some in phase 2)
+         * initialize env PATH (See specification P.9)
+         * ignore some signals (sigint, etc)
+         * change behavior of sigchld
          */
 }
 
@@ -34,6 +60,7 @@ void mainloop()
          static struct parsetree cmd_info;
 
          while (true){
+                 pr_prompt();
                  getcmdline(cmdline, CMD_BUF_SIZE);
                  parser(cmdline, &cmd_info);
                  interpreter(cmd_info);

@@ -18,10 +18,15 @@ int bn_cd(int cmdargc, char* cmdargv[])
         return 0;
 }
 
+/* 
+ * classify the command: builtin or external program
+ * A function pointer will be stored in backeval, which implement the action
+ */
 char *classify(char *given_cmdname, cmd_evaluater *backeval)
 {
         static struct cmdmapping bn_cmdmap[] =
         {
+                /* TODO: store the function instead of NULL */
                 {"cd", bn_cd},
                 {"exit", NULL},
                 {"fg", NULL},
@@ -44,6 +49,7 @@ char *classify(char *given_cmdname, cmd_evaluater *backeval)
         return "Command Name";
 }
 
+/* master function of this library */
 void interpreter(struct parsetree cmd_info)
 {
         char **token = cmd_info.cmd;

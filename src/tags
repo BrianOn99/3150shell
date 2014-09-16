@@ -8,11 +8,12 @@ CMD_BUF_SIZE	main.c	9;"	d	file:
 MAX_CMD_LEN	parser.h	4;"	d
 PARSE_H	parser.h	2;"	d
 TOKEN_ARRAY_SIZE	parser.c	4;"	d	file:
-bn_cd	interpreter.c	/^int bn_cd(char* cmdargv[])$/;"	f
-classify	interpreter.c	/^char *classify(char *given_cmdname)$/;"	f
+bn_cd	interpreter.c	/^int bn_cd(int cmdargc, char* cmdargv[])$/;"	f
+classify	interpreter.c	/^char *classify(char *given_cmdname, cmd_evaluater *backeval)$/;"	f
 cmd	parser.h	/^        char **cmd;$/;"	m	struct:parsetree
+cmd_evaluater	interpreter.h	/^typedef int (*cmd_evaluater)(int, char**);$/;"	t
 cmd_len	parser.h	/^        int cmd_len;$/;"	m	struct:parsetree
-cmdfunction	interpreter.h	/^        int (*cmdfunction)(char**);$/;"	m	struct:cmdmapping
+cmdfunction	interpreter.h	/^        cmd_evaluater cmdfunction;$/;"	m	struct:cmdmapping
 cmdmapping	interpreter.h	/^struct cmdmapping {$/;"	s
 cmdname	interpreter.h	/^        char *cmdname;$/;"	m	struct:cmdmapping
 getcmdline	main.c	/^void getcmdline(char *buffer, size_t size)$/;"	f
@@ -23,5 +24,6 @@ main	test.c	/^void main(void)$/;"	f
 mainloop	main.c	/^void mainloop()$/;"	f
 parser	parser.c	/^void parser(char cmdline[], struct parsetree *cmd_info)$/;"	f
 parsetree	parser.h	/^struct parsetree {$/;"	s
+pr_prompt	main.c	/^void pr_prompt()$/;"	f
 token_array	parser.c	/^static char *token_array[TOKEN_ARRAY_SIZE];$/;"	v	file:
 tokenize	parser.c	/^int tokenize(char cmdline[], char *token_store[])$/;"	f

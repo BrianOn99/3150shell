@@ -12,7 +12,7 @@ struct parsetree {
 int buildtree(char **tokens, char **list[], int *count);
 int tokenize(char cmdline[], char *token_store[]);
 int parser(char cmdline[], struct parsetree *cmd_info);
-char** cmdtok(char ***tokens_ptr);
+int cmdtok(char ***tokens_ptr, char ***target);
 int is_seperator(char *token);
 
 #endif

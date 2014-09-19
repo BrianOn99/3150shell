@@ -23,6 +23,7 @@ void getcmdline(char *buffer, size_t size)
                         /* ctrl-d pressed */
                         /* TODO: exit the shell */
                         buffer[0] = '\0';
+			bn_exit();
         } else{
                 buffer[strlen(buffer) - 1] ='\0';
         }
@@ -62,8 +63,8 @@ void mainloop()
          while (true){
                  pr_prompt();
                  getcmdline(cmdline, CMD_BUF_SIZE);
-                 parser(cmdline, &cmd_info);
-                 interpreter(cmd_info);
+                 if (parser(cmdline, &cmd_info) != -1)
+			 interpreter(&cmd_info);
          }
 }
 

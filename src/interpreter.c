@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "interpreter.h"
 
@@ -7,9 +8,17 @@
  * the functions starting with "bn_" represent builtin commands
  */
 
-int bn_cd(int cmdargc, char* cmdargv[])
+int cmdlen(char* cmdargv[])
 {
-        if (cmdargc != 1){
+	char **arg_ptr = cmdargv;
+	while (*(++arg_ptr));
+	return arg_ptr - cmdargv;
+}
+
+int bn_cd(char* cmdargv[])
+{
+        int cmdargc = cmdlen(cmdargv);
+        if (cmdargc != 2){
                 /*
                  * Error SHOULD be printed to stderr, but P.21 require stdout
                  * I am Very reluctant to do so, it is ugly
@@ -22,9 +31,9 @@ int bn_cd(int cmdargc, char* cmdargv[])
         return 0;
 }
 
-int bn_exit(int cmdargc, char* cmdargv[])
+int bn_exit(char* cmdargv[])
 {
-        /* TODO: exit (P.20) */
+        exit(0);
 }
 
 /* 
@@ -58,20 +67,31 @@ char *classify(char *given_cmdname, cmd_evaluater *backeval)
         return "Command Name";
 }
 
-/* master function of this library */
-void interpreter(struct parsetree cmd_info)
+
+void print_and_run(char **cmd, int *argpos)
 {
-        char **token = cmd_info.cmd;
-        
-        cmd_evaluater eval = NULL;
-        if (token[0] != NULL){
-                char *cmd_type = classify(token[0], &eval);
-                printf("Token %d: %s (%s)\n", 1, token[0], cmd_type);
-        }
+	cmd_evaluater eval = NULL;
+	if (cmd[0] != NULL){
+		char *cmd_type = classify(cmd[0], &eval);
+		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[0], cmd_type);
+	}
 
-        for (int i = 1; token[i] != NULL; i++)
-                printf("Token %d: %s (%s)\n", i + 1, token[i], "Argument");
+	for (int i = 1; cmd[i] != NULL; i++)
+		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[i], "Argument");
 
-        if (eval != NULL)
-                eval(cmd_info.cmd_len, cmd_info.cmd);
+	if (eval != NULL)
+		eval(cmd);
+}
+
+/* master function of this library */
+void interpreter(struct parsetree *cmd_info)
+{
+	char ***list = cmd_info->list;
+	int argpos = 1;
+
+	print_and_run(list[0], &argpos);
+	for (int i=1; i < cmd_info->count; i++){
+		printf("Token %d: pipe\n", argpos++);
+                print_and_run(list[i], &argpos);
+	}
 }

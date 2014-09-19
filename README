@@ -12,17 +12,18 @@ mainloop =>
         reader
         parser =>
                 tokenizer
+		buildtree
         interprter =>
-                command classifier
-                builtin commands  (not yet exist)
-                external program laucher  (not yet exist)
+                classify (command classifier)
+                "builtin commands"  (partly exist)
+                "xternal program laucher"  (not yet exist)
 
 In the time of writing, it only classify command and print tokens.
 
 Compile
 =======
 
-./make
+make
 
 Coding convention
 =================

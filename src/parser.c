@@ -23,19 +23,28 @@ int parser(char cmdline[], struct parsetree *cmd_info)
 {
         // it should be more compllex in phase 2
         int cmd_len = tokenize(cmdline, token_array);
-        if (buildtree(token_array, cmd_info->list, &(cmd_info->count)))
+        if (buildtree(token_array, cmd_info->list, &(cmd_info->count))){
+	        printf("syntax error\n");
                 return -1;
+	}
+	return 0;
 }
 
+/* build the syyntax tree, although it is not a tree in this case */
 int buildtree(char **tokens, char **list[], int *count)
 {
-        for (int i = 0; i < CMD_LIST_LEN; i++){
-                list[i] = cmdtok(&tokens);
-                if (is_seperator(*(tokens+1)))
-                        return -1;
-                if (list[i] == NULL){
-                        *count = i;
+        for (int i = 0; i < CMD_LIST_LEN - 1; i++){
+                int ret = cmdtok(&tokens, &list[i]);
+                if (ret == -1){
+			/* get the end */
+			list[i+1] = NULL;
+                        *count = i+1;
                         return 0;
+		}
+
+                if ((*tokens && is_seperator(*tokens)) || !*tokens){
+			/* a "|" should not be followed by a "|" or at the start */
+                        return -1;
                 }
         }
 
@@ -45,24 +54,33 @@ int buildtree(char **tokens, char **list[], int *count)
 
 int is_seperator(char *token)
 {
-        return (!token) || (!strcmp(token, "|"));
+        return !strcmp(token, "|");
 }
 
-char** cmdtok(char ***tokens_ptr)
+/*
+ * this function is designed to retokenize the tokenized commandline.
+ * That is, read the tokens, treat individual commands, separated by "|", as
+ * tokens.
+ * However, for convenience, there are some differences from strtok, the major
+ * one is: don't pass NULL, instead, repetedly pass the same (modifiable) string.
+ */
+int cmdtok(char ***tokens_ptr, char ***target)
 {
+        *target = *tokens_ptr;
         char **tokens = *tokens_ptr;
-        char **orig = tokens;
-
         if (!*tokens)
-                return NULL;
+                return -1;
 
         do{
                 tokens++;
-        } while (!is_seperator(*tokens));
+        } while (*tokens && !is_seperator(*tokens));
 
-	*tokens = NULL;
-        *tokens_ptr = tokens + 1;
+        if (*tokens){
+		*tokens = NULL;
+		*tokens_ptr = tokens + 1;
+		return 0;
+	} else{
+	        return -1;
+	}
 
-        return orig;
-        
 }

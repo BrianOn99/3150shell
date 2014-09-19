@@ -2,13 +2,17 @@
 #define PARSE_H
 
 #define MAX_CMD_LEN 255
+#define CMD_LIST_LEN 10
 
 struct parsetree {
-        char **cmd;
-        int cmd_len;
+        char **list[CMD_LIST_LEN];
+        int count;
 };
 
+int buildtree(char **tokens, char **list[], int *count);
 int tokenize(char cmdline[], char *token_store[]);
-void parser(char cmdline[], struct parsetree *cmd_info);
+int parser(char cmdline[], struct parsetree *cmd_info);
+char** cmdtok(char ***tokens_ptr);
+int is_seperator(char *token);
 
 #endif

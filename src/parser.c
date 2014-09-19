@@ -19,10 +19,49 @@ int tokenize(char cmdline[], char *token_store[])
         fprintf(stderr, "toomany tokens\n");
 }
 
-void parser(char cmdline[], struct parsetree *cmd_info)
+int parser(char cmdline[], struct parsetree *cmd_info)
 {
         // it should be more compllex in phase 2
-        cmd_info->cmd_len = tokenize(cmdline, token_array);
-        cmd_info->cmd = token_array;
+        int cmd_len = tokenize(cmdline, token_array);
+        if (buildtree(token_array, cmd_info->list, &(cmd_info->count)))
+                return -1;
 }
 
+int buildtree(char **tokens, char **list[], int *count)
+{
+        for (int i = 0; i < CMD_LIST_LEN; i++){
+                list[i] = cmdtok(&tokens);
+                if (is_seperator(*(tokens+1)))
+                        return -1;
+                if (list[i] == NULL){
+                        *count = i;
+                        return 0;
+                }
+        }
+
+        fprintf(stderr, "toomany commands\n");
+        return -1;
+}
+
+int is_seperator(char *token)
+{
+        return (!token) || (!strcmp(token, "|"));
+}
+
+char** cmdtok(char ***tokens_ptr)
+{
+        char **tokens = *tokens_ptr;
+        char **orig = tokens;
+
+        if (!*tokens)
+                return NULL;
+
+        do{
+                tokens++;
+        } while (!is_seperator(*tokens));
+
+        tokens++;
+
+        return orig;
+        
+}

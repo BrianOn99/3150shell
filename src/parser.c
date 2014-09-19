@@ -60,7 +60,8 @@ char** cmdtok(char ***tokens_ptr)
                 tokens++;
         } while (!is_seperator(*tokens));
 
-        tokens++;
+	*tokens = NULL;
+        *tokens_ptr = tokens + 1;
 
         return orig;
         

@@ -6,7 +6,9 @@
 /*
  * Here are functions making up the interprter, which actually run commands
  * the functions starting with "bn_" represent builtin commands
- */
+*/
+
+enum cmd_type { builtin, external };
 
 int cmdlen(char* cmdargv[])
 {
@@ -36,44 +38,44 @@ int bn_exit(char* cmdargv[])
         exit(0);
 }
 
+static struct cmdmapping bn_cmdmap[] =
+{
+        /* TODO: store the function instead of NULL */
+        {"cd", bn_cd},
+        {"exit", bn_exit},
+        {"fg", NULL},
+        {"jobs", NULL},
+        {NULL, NULL}
+};
+
 /* 
  * classify the command: builtin or external program
  * A function pointer will be stored in backeval, which implement the action
  */
-char *classify(char *given_cmdname, cmd_evaluater *backeval)
+enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
 {
-        static struct cmdmapping bn_cmdmap[] =
-        {
-                /* TODO: store the function instead of NULL */
-                {"cd", bn_cd},
-                {"exit", bn_exit},
-                {"fg", NULL},
-                {"jobs", NULL},
-                {NULL, NULL}
-        };
 
-        /*
-         *TODO: check actual requirement of the string, I am lazy
-         */
         struct cmdmapping *map_entry = bn_cmdmap;
         while (map_entry->cmdname){
                 if (!strcmp(map_entry->cmdname, given_cmdname)){
-                        *backeval = map_entry->cmdfunction;
-                        return "Built-in Command";
+                        if (backeval)
+                                *backeval = map_entry->cmdfunction;
+                        return builtin;
                 }
                 map_entry++;
         } 
 
-        return "Command Name";
+        return external;
 }
 
 
 void print_and_run(char **cmd, int *argpos)
 {
+        static char *typestr[] = {"Built-in Command", "Command Name"};
 	cmd_evaluater eval = NULL;
 	if (cmd[0] != NULL){
-		char *cmd_type = classify(cmd[0], &eval);
-		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[0], cmd_type);
+		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[0],
+                                              typestr[classify(cmd[0], &eval)]);
 	}
 
 	for (int i = 1; cmd[i] != NULL; i++)
@@ -90,6 +92,13 @@ void interpreter(struct parsetree *cmd_info)
 	int argpos = 1;
 
 	print_and_run(list[0], &argpos);
+	for (int i=1; i < cmd_info->count; i++){
+                if (classify(list[i][0], NULL) == builtin){
+                        printf("Error: invalid input command line\n");
+                        return;
+                }
+        }
+
 	for (int i=1; i < cmd_info->count; i++){
 		printf("Token %d: pipe\n", argpos++);
                 print_and_run(list[i], &argpos);

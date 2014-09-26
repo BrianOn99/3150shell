@@ -3,7 +3,51 @@
 #include "parser.h"
 #define TOKEN_ARRAY_SIZE (MAX_CMD_LEN /2)
 
+#define is_argchar(c) !invalid_argchar[c]
+
+
+char invalid_argchar[256] = {['<'] = 1, ['>'] = 1, ['|'] = 1,
+                             ['!'] = 1, ['\''] = 1, ['`'] = 1, ['"'] = 1 };
+
 static char *token_array[TOKEN_ARRAY_SIZE];
+
+void invalid_input()
+{
+        printf("Error: invalid input command line\n");
+}
+
+int valid_arg(char *token)
+{
+        for (char *c = token; *c; c++){
+                if (!is_argchar(*c)){
+                        return 0;
+                }
+        }
+        return 1;
+}
+
+int valid_cmdname(char *token)
+{
+        for (char *c = token; *c; c++){
+                if (!is_argchar(*c) || *c == '*'){
+                        return 0;
+                }
+        }
+        return 1;
+}
+
+int valid_cmdline(char **tokens)
+{
+        if (!valid_cmdname(*tokens++))
+                return 0;
+        while (*tokens){
+                if (!valid_arg(*tokens))
+                        return 0;
+                tokens++;
+        }
+
+        return 1;
+}
 
 int tokenize(char cmdline[], char *token_store[])
 {
@@ -23,8 +67,8 @@ int parser(char cmdline[], struct parsetree *cmd_info)
 {
         // it should be more compllex in phase 2
         int cmd_len = tokenize(cmdline, token_array);
-        if (buildtree(token_array, cmd_info->list, &(cmd_info->count))){
-	        printf("syntax error\n");
+        if (buildtree(token_array, cmd_info->list, &(cmd_info->count)) != 0){
+	        invalid_input();
                 return -1;
 	}
 	return 0;
@@ -35,6 +79,10 @@ int buildtree(char **tokens, char **list[], int *count)
 {
         for (int i = 0; i < CMD_LIST_LEN - 1; i++){
                 int ret = cmdtok(&tokens, &list[i]);
+
+                if (!valid_cmdline(list[i]))
+                        return -1;
+
                 if (ret == -1){
 			/* get the end */
 			list[i+1] = NULL;
@@ -42,10 +90,11 @@ int buildtree(char **tokens, char **list[], int *count)
                         return 0;
 		}
 
+                /* a "|" should not be followed by a "|" or at the start */
                 if ((*tokens && is_seperator(*tokens)) || !*tokens){
-			/* a "|" should not be followed by a "|" or at the start */
+                        printf("error 104\n");
                         return -1;
-                }
+                } 
         }
 
         fprintf(stderr, "toomany commands\n");
@@ -68,8 +117,9 @@ int cmdtok(char ***tokens_ptr, char ***target)
 {
         *target = *tokens_ptr;
         char **tokens = *tokens_ptr;
-        if (!*tokens)
+        if (!*tokens){
                 return -1;
+        }
 
         do{
                 tokens++;

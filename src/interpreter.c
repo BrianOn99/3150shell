@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "interpreter.h"
 
 /*
@@ -28,13 +29,14 @@ int bn_cd(char* cmdargv[])
                 fprintf(stdout, "cd: wrong number of arguments\n");
                 return 1;
         }
-        /* TODO: really do a cd */
+        chdir(cmdargv[1]);
 
         return 0;
 }
 
 int bn_exit(char* cmdargv[])
 {
+        printf("[ Shell Terminated ]\n");
         exit(0);
 }
 
@@ -73,16 +75,21 @@ void print_and_run(char **cmd, int *argpos)
 {
         static char *typestr[] = {"Built-in Command", "Command Name"};
 	cmd_evaluater eval = NULL;
-	if (cmd[0] != NULL){
-		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[0],
-                                              typestr[classify(cmd[0], &eval)]);
-	}
+        char *type = typestr[classify(cmd[0], &eval)];
+
+	if (eval != NULL){
+		int ret = eval(cmd);
+                if (ret)
+                        return;
+        }
+
+
+	if (cmd[0] != NULL)
+		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[0], type);
 
 	for (int i = 1; cmd[i] != NULL; i++)
-		printf("Token %d: %s (%s)\n", (*argpos)++, cmd[i], "Argument");
+		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[i], "Argument");
 
-	if (eval != NULL)
-		eval(cmd);
 }
 
 /* master function of this library */
@@ -100,7 +107,7 @@ void interpreter(struct parsetree *cmd_info)
         }
 
 	for (int i=1; i < cmd_info->count; i++){
-		printf("Token %d: pipe\n", argpos++);
+		printf("Token %d: \"|\" (Pipe)\n", argpos++);
                 print_and_run(list[i], &argpos);
 	}
 }

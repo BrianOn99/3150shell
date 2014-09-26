@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +46,9 @@ void getcmdline(char *buffer, size_t size)
 void pr_prompt()
 {
         /* TODO: print out the prompt (See Specification P.4) */
+	char *dirname = get_current_dir_name();
+	printf("[3150 shell:%s]$ ", dirname);
+	free(dirname);
 }
 void initialize()
 {

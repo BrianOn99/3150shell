@@ -36,6 +36,12 @@ int bn_cd(char* cmdargv[])
 
 int bn_exit(char* cmdargv[])
 {
+        int cmdargc = cmdlen(cmdargv);
+        if (cmdargc != 1){
+                fprintf(stdout, "exit: wrong number of arguments\n");
+                return 1;
+        }
+
         printf("[ Shell Terminated ]\n");
         exit(0);
 }

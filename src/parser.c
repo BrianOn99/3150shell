@@ -6,7 +6,7 @@
 #define is_argchar(c) !invalid_argchar[c]
 
 
-char invalid_argchar[256] = {['<'] = 1, ['>'] = 1, ['|'] = 1,
+char invalid_argchar[256] = {['\t'] = 1, ['<'] = 1, ['>'] = 1, ['|'] = 1,
                              ['!'] = 1, ['\''] = 1, ['`'] = 1, ['"'] = 1 };
 
 static char *token_array[TOKEN_ARRAY_SIZE];
@@ -56,7 +56,7 @@ int tokenize(char cmdline[], char *token_store[])
         for (int i = 1; i < TOKEN_ARRAY_SIZE; i++){
                 token_store[i] = strtok(NULL, " ");
                 if (token_store[i] == NULL)
-                        return i - 1;
+                        return i;
         }
 
         // we should never get here
@@ -65,7 +65,8 @@ int tokenize(char cmdline[], char *token_store[])
 
 int parser(char cmdline[], struct parsetree *cmd_info)
 {
-        // it should be more compllex in phase 2
+        if (cmdline[0] == '\0')
+                return -1;
         int cmd_len = tokenize(cmdline, token_array);
         if (buildtree(token_array, cmd_info->list, &(cmd_info->count)) != 0){
 	        invalid_input();
@@ -90,9 +91,8 @@ int buildtree(char **tokens, char **list[], int *count)
                         return 0;
 		}
 
-                /* a "|" should not be followed by a "|" or at the start */
+                /* a "|" should not be followed by a "|" or at the end */
                 if ((*tokens && is_seperator(*tokens)) || !*tokens){
-                        printf("error 104\n");
                         return -1;
                 } 
         }
@@ -126,11 +126,12 @@ int cmdtok(char ***tokens_ptr, char ***target)
         } while (*tokens && !is_seperator(*tokens));
 
         if (*tokens){
+                /* reach a pipe */
 		*tokens = NULL;
 		*tokens_ptr = tokens + 1;
 		return 0;
 	} else{
+                /* reach the end */
 	        return -1;
 	}
-
 }

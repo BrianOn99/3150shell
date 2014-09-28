@@ -4,26 +4,34 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.8	//
-CMD_BUF_SIZE	main.c	9;"	d	file:
-MAX_CMD_LEN	parser.h	4;"	d
-PARSE_H	parser.h	2;"	d
+CMD_BUF_SIZE	main.c	11;"	d	file:
 TOKEN_ARRAY_SIZE	parser.c	4;"	d	file:
-bn_cd	interpreter.c	/^int bn_cd(int cmdargc, char* cmdargv[])$/;"	f
-classify	interpreter.c	/^char *classify(char *given_cmdname, cmd_evaluater *backeval)$/;"	f
-cmd	parser.h	/^        char **cmd;$/;"	m	struct:parsetree
-cmd_evaluater	interpreter.h	/^typedef int (*cmd_evaluater)(int, char**);$/;"	t
-cmd_len	parser.h	/^        int cmd_len;$/;"	m	struct:parsetree
-cmdfunction	interpreter.h	/^        cmd_evaluater cmdfunction;$/;"	m	struct:cmdmapping
-cmdmapping	interpreter.h	/^struct cmdmapping {$/;"	s
-cmdname	interpreter.h	/^        char *cmdname;$/;"	m	struct:cmdmapping
+_GNU_SOURCE	main.c	1;"	d	file:
+bn_cd	interpreter.c	/^int bn_cd(char* cmdargv[])$/;"	f
+bn_cmdmap	interpreter.c	/^static struct cmdmapping bn_cmdmap[] =$/;"	v	typeref:struct:cmdmapping	file:
+bn_exit	interpreter.c	/^int bn_exit(char* cmdargv[])$/;"	f
+buildtree	parser.c	/^int buildtree(char **tokens, char **list[], int *count)$/;"	f
+builtin	interpreter.c	/^enum cmd_type { builtin, external };$/;"	e	enum:cmd_type	file:
+classify	interpreter.c	/^enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)$/;"	f
+cmd_type	interpreter.c	/^enum cmd_type { builtin, external };$/;"	g	file:
+cmdlen	interpreter.c	/^int cmdlen(char* cmdargv[])$/;"	f
+cmdtok	parser.c	/^int cmdtok(char ***tokens_ptr, char ***target)$/;"	f
+external	interpreter.c	/^enum cmd_type { builtin, external };$/;"	e	enum:cmd_type	file:
 getcmdline	main.c	/^void getcmdline(char *buffer, size_t size)$/;"	f
 initialize	main.c	/^void initialize()$/;"	f
-interpreter	interpreter.c	/^void interpreter(struct parsetree cmd_info)$/;"	f
+interpreter	interpreter.c	/^void interpreter(struct parsetree *cmd_info)$/;"	f
+invalid_argchar	parser.c	/^char invalid_argchar[256] = {['\\t'] = 1, ['<'] = 1, ['>'] = 1, ['|'] = 1,$/;"	v
+invalid_input	parser.c	/^void invalid_input()$/;"	f
+is_argchar	parser.c	6;"	d	file:
+is_seperator	parser.c	/^int is_seperator(char *token)$/;"	f
 main	main.c	/^void main(void)$/;"	f
 main	test.c	/^void main(void)$/;"	f
 mainloop	main.c	/^void mainloop()$/;"	f
-parser	parser.c	/^void parser(char cmdline[], struct parsetree *cmd_info)$/;"	f
-parsetree	parser.h	/^struct parsetree {$/;"	s
+parser	parser.c	/^int parser(char cmdline[], struct parsetree *cmd_info)$/;"	f
 pr_prompt	main.c	/^void pr_prompt()$/;"	f
+print_and_run	interpreter.c	/^void print_and_run(char **cmd, int *argpos)$/;"	f
 token_array	parser.c	/^static char *token_array[TOKEN_ARRAY_SIZE];$/;"	v	file:
 tokenize	parser.c	/^int tokenize(char cmdline[], char *token_store[])$/;"	f
+valid_arg	parser.c	/^int valid_arg(char *token)$/;"	f
+valid_cmdline	parser.c	/^int valid_cmdline(char **tokens)$/;"	f
+valid_cmdname	parser.c	/^int valid_cmdname(char *token)$/;"	f

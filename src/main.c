@@ -25,22 +25,10 @@ void getcmdline(char *buffer, size_t size)
                         /* ctrl-d pressed */
                         /* TODO: exit the shell */
                         buffer[0] = '\0';
-			bn_exit();
+			bn_exit((char *[]){"exit", NULL});
         } else{
                 buffer[strlen(buffer) - 1] ='\0';
         }
-
-
-        /* this is old version using bare system call, but error prone */
-        /*
-        int read_size = read(0, buffer, size-1);
-        if (read_size == -1)
-                perror("getcmdline");
-        else if (read_size == 0)
-                buffer[0] = '\0';
-        else
-                buffer[read_size - 1] = '\0';
-        */
 }
 
 void pr_prompt()

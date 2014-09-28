@@ -3,7 +3,7 @@ vpath %.h src
 
 CPPFLAGS = -g --std=gnu99 -I.
 
-dumbsh: main.c parser.o interpreter.o
+3150sh: main.c parser.o interpreter.o
 	gcc -g $^ -o $@
 
 interpreter.o: parser.h
@@ -13,4 +13,4 @@ test: test.c parser.o
 .PHONY: clean
 
 clean:
-	rm *.o dumbsh
+	@rm *.o 3150sh 2> /dev/null || true

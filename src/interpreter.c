@@ -83,15 +83,14 @@ void print_and_run(char **cmd, int *argpos)
 	cmd_evaluater eval = NULL;
         char *type = typestr[classify(cmd[0], &eval)];
 
+	if (cmd[0] != NULL)
+		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[0], type);
+
 	if (eval != NULL){
 		int ret = eval(cmd);
                 if (ret)
                         return;
         }
-
-
-	if (cmd[0] != NULL)
-		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[0], type);
 
 	for (int i = 1; cmd[i] != NULL; i++)
 		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[i], "Argument");
@@ -104,14 +103,16 @@ void interpreter(struct parsetree *cmd_info)
 	char ***list = cmd_info->list;
 	int argpos = 1;
 
-	print_and_run(list[0], &argpos);
-	for (int i=1; i < cmd_info->count; i++){
-                if (classify(list[i][0], NULL) == builtin){
-                        printf("Error: invalid input command line\n");
-                        return;
+        if (cmd_info->count > 1){
+                for (int i=0; i < cmd_info->count; i++){
+                        if (classify(list[i][0], NULL) == builtin){
+                                printf("Error: invalid input command line\n");
+                                return;
+                        }
                 }
         }
 
+        print_and_run(list[0], &argpos);
 	for (int i=1; i < cmd_info->count; i++){
 		printf("Token %d: \"|\" (Pipe)\n", argpos++);
                 print_and_run(list[i], &argpos);

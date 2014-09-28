@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <signal.h>
 #include "parser.h"
 #include "interpreter.h"
 
@@ -19,13 +20,14 @@ void getcmdline(char *buffer, size_t size)
 
         char *ret = fgets(buffer, size, stdin);
         if (!ret){
-                if (ferror(stdin))
+                if (ferror(stdin)){
                         fprintf(stderr, "error reading input\n");
-                else
+                } else {
                         /* ctrl-d pressed */
                         /* TODO: exit the shell */
                         buffer[0] = '\0';
 			bn_exit((char *[]){"exit", NULL});
+                }
         } else{
                 buffer[strlen(buffer) - 1] ='\0';
         }
@@ -40,6 +42,10 @@ void pr_prompt()
 }
 void initialize()
 {
+        signal(SIGINT, SIG_IGN);
+        signal(SIGTERM, SIG_IGN);
+        signal(SIGQUIT, SIG_IGN);
+        signal(SIGTSTP, SIG_IGN);
         /*
          * TODO: (some in phase 2)
          * initialize env PATH (See specification P.9)

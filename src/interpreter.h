@@ -7,4 +7,5 @@ struct cmdmapping {
         cmd_evaluater cmdfunction;
 };
 
-void interpreter(struct parsetree *cmd_info);
+int interpreter(struct parsetree *cmd_info);
+enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval);

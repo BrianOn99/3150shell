@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
 #include "interpreter.h"
 
 /*
@@ -17,46 +18,53 @@ struct iofd {
         int out;
 };
 
-int cmdlen(char* cmdargv[])
+int cmdlen(char** cmdargv)
 {
 	char **arg_ptr = cmdargv;
 	while (*(++arg_ptr));
 	return arg_ptr - cmdargv;
 }
 
-int bn_cd(char* cmdargv[])
+int check_cmdlen(char* cmdargv[], int len, const char *cmdname)
 {
         int cmdargc = cmdlen(cmdargv);
-        if (cmdargc != 2){
+        if (cmdargc != len){
                 /*
                  * Error SHOULD be printed to stderr, but P.21 require stdout
                  * I am Very reluctant to do so, it is ugly
                  */
-                fprintf(stdout, "cd: wrong number of arguments\n");
-                return 1;
+                fprintf(stdout, "%s: wrong number of arguments\n", cmdname);
+                return 0;
         }
-        chdir(cmdargv[1]);
+}
 
-        return 0;
+int bn_cd(char* cmdargv[])
+{
+        if (!check_cmdlen(cmdargv, 2, "cd"))
+                return 0;
+
+        chdir(cmdargv[1]);
+        return 1;
 }
 
 int bn_fg(char* cmdargv[])
 {
-        return 0;
+        if (!check_cmdlen(cmdargv, 2, "fg"))
+                return 0;
+        return 1;
 }
 
 int bn_jobs(char* cmdargv[])
 {
-        return 0;
+        if (!check_cmdlen(cmdargv, 1, "jobs"))
+                return 0;
+        return 1;
 }
  
 int bn_exit(char* cmdargv[])
 {
-        int cmdargc = cmdlen(cmdargv);
-        if (cmdargc != 1){
-                fprintf(stdout, "exit: wrong number of arguments\n");
-                return 1;
-        }
+        if (!check_cmdlen(cmdargv, 1, "exit"))
+                return 0;
 
         printf("[ Shell Terminated ]\n");
         exit(0);
@@ -76,17 +84,21 @@ int run_external(char* cmdargv[], struct iofd inoutfd)
                 perror("fork");
                 return -1;
         } else if (pid == 0) {
+                dup2(inoutfd.in, 0);
+                dup2(inoutfd.out, 1);
                 execvp(cmdargv[0], cmdargv);
                 perror("exec");
                 exit(-1);
         } else {
+                /*
                 int status;
                 if (waitpid(pid, &status, 0) == -1)
                         return -1;
                 else if (WIFEXITED(status))
                         return WEXITSTATUS(status);
+                */
+                return pid;
         }
-        return -1;
 }
 
 static struct cmdmapping bn_cmdmap[] =
@@ -119,26 +131,6 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
         return external;
 }
 
-
-void print_and_run(char **cmd, int *argpos)
-{
-        static char *typestr[] = {"Built-in Command", "Command Name"};
-	cmd_evaluater eval = NULL;
-
-        char *type = typestr[classify(cmd[0], &eval)];
-
-	if (cmd[0] != NULL)
-		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[0], type);
-
-	for (int i = 1; cmd[i] != NULL; i++)
-		printf("Token %d: \"%s\" (%s)\n", (*argpos)++, cmd[i], "Argument");
-
-	if (eval != NULL){
-		int ret = eval(cmd);
-                if (ret)
-                        return;
-        }
-}
 
 /* master function of this library */
 int interpreter(struct parsetree *cmd_info)
@@ -180,5 +172,17 @@ int interpreter(struct parsetree *cmd_info)
                         run_external(list[0], inoutfds[0]);
         }
 
+        for (int i=0; i < cmd_info->count; i++){
+                int status;
+                /*TODO: it should wait for group id in the future*/
+                if (waitpid(-1, &status, 0) == -1) {
+                        if (errno == ECHILD)
+                                break;
+                        else
+                                return -1;
+                } else if (WIFEXITED(status)) {
+                        return WEXITSTATUS(status);
+                }
+        }
         /* TODO: close fd */
 }

@@ -42,10 +42,13 @@ void pr_prompt()
 }
 void initialize()
 {
+        /*
         signal(SIGINT, SIG_IGN);
         signal(SIGTERM, SIG_IGN);
         signal(SIGQUIT, SIG_IGN);
         signal(SIGTSTP, SIG_IGN);
+        */
+
         /*
          * TODO: (some in phase 2)
          * initialize env PATH (See specification P.9)

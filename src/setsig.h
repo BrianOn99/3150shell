@@ -1,0 +1,2 @@
+void setsig();
+void unsetsig();

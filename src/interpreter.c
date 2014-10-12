@@ -4,12 +4,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <errno.h>
+#include <sys/queue.h>
+#include "setsig.h"
 #include "interpreter.h"
 
-/*
- * Here are functions making up the interprter, which actually run commands
- * the functions starting with "bn_" represent builtin commands
-*/
+static TAILQ_HEAD(tailhead, job) head;
+ 
+void job_queue_init()
+{
+
+        TAILQ_INIT(&head);
+}
 
 enum cmd_type { builtin, external };
 
@@ -38,6 +44,10 @@ int check_cmdlen(char* cmdargv[], int len, const char *cmdname)
         }
 }
 
+/*
+ * Here are functions making up the interprter, which actually run commands
+ * the functions starting with "bn_" represent builtin commands
+*/
 int bn_cd(char* cmdargv[])
 {
         if (!check_cmdlen(cmdargv, 2, "cd"))
@@ -58,6 +68,11 @@ int bn_jobs(char* cmdargv[])
 {
         if (!check_cmdlen(cmdargv, 1, "jobs"))
                 return 0;
+
+        struct job *jp;
+        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
+                printf("job: %s\n", jp->rawline);
+        }
         return 1;
 }
  
@@ -77,26 +92,27 @@ int run_builtin(char **cmd)
         return eval(cmd);
 }
 
-int run_external(char* cmdargv[], struct iofd inoutfd)
+int run_external(char* cmdargv[], struct iofd inoutfd, pid_t pgid)
 {
         int pid = fork();
         if (pid == -1) {
                 perror("fork");
                 return -1;
         } else if (pid == 0) {
+                pid = getpid ();
+                if (pgid == 0)
+                        pgid = pid;
+                setpgid (pid, pgid);
+                tcsetpgrp(0, pgid);
                 dup2(inoutfd.in, 0);
                 dup2(inoutfd.out, 1);
+                //close(inoutfd.in);
+                //close(inoutfd.out);
+                unsetsig();
                 execvp(cmdargv[0], cmdargv);
                 perror("exec");
                 exit(-1);
         } else {
-                /*
-                int status;
-                if (waitpid(pid, &status, 0) == -1)
-                        return -1;
-                else if (WIFEXITED(status))
-                        return WEXITSTATUS(status);
-                */
                 return pid;
         }
 }
@@ -131,13 +147,15 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
         return external;
 }
 
-
 /* master function of this library */
 int interpreter(struct parsetree *cmd_info)
 {
+        struct job *jobnow = malloc(sizeof(struct job));
 	char ***list = cmd_info->list;
         struct iofd *inoutfds = malloc(sizeof(struct iofd) * cmd_info->count);
 
+        jobnow->pgid = 0;
+        jobnow->rawline = strdup(cmd_info->rawline);
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
 
@@ -160,29 +178,38 @@ int interpreter(struct parsetree *cmd_info)
                                 return -1;
                         }
                 }
-
-                for (int i=0; i < cmd_info->count; i++)
-                        run_external(list[i], inoutfds[i]);
-                
         } else {
                 cmd_evaluater eval = NULL;
                 if (classify(list[0][0], &eval) == builtin)
                         return eval(list[0]);
-                else
-                        run_external(list[0], inoutfds[0]);
+        }
+
+        for (int i=0; i < cmd_info->count; i++){
+                pid_t chldpid = run_external(list[i], inoutfds[i], jobnow->pgid);
+                if (!jobnow->pgid)
+                        jobnow->pgid = chldpid;
+                setpgid(chldpid, jobnow->pgid);
+                tcsetpgrp(0, jobnow->pgid);
         }
 
         for (int i=0; i < cmd_info->count; i++){
                 int status;
-                /*TODO: it should wait for group id in the future*/
-                if (waitpid(-1, &status, 0) == -1) {
+                if (waitpid(- jobnow->pgid, &status, WUNTRACED) == -1) {
                         if (errno == ECHILD)
                                 break;
                         else
                                 return -1;
                 } else if (WIFEXITED(status)) {
-                        return WEXITSTATUS(status);
+                        //return WEXITSTATUS(status);
+                } else if (WIFSTOPPED(status)) {
+                        printf("child stopped\n");
+                        TAILQ_INSERT_TAIL(&head, jobnow, entries);
                 }
         }
+
+        if (tcsetpgrp(0, getpgid(0)) == -1)
+                perror("tcsetpgrp");
+
+        free_parsetree_content(cmd_info);
         /* TODO: close fd */
 }

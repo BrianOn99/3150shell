@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "parser.h"
 #define TOKEN_ARRAY_SIZE (MAX_CMD_LEN /2)
 
@@ -8,8 +9,6 @@
 
 char invalid_argchar[256] = {['\t'] = 1, ['<'] = 1, ['>'] = 1, ['|'] = 1,
                              ['!'] = 1, ['\''] = 1, ['`'] = 1, ['"'] = 1 };
-
-static char *token_array[TOKEN_ARRAY_SIZE];
 
 void invalid_input()
 {
@@ -63,11 +62,24 @@ int tokenize(char cmdline[], char *token_store[])
         fprintf(stderr, "toomany tokens\n");
 }
 
-int parser(char cmdline[], struct parsetree *cmd_info)
+void free_parsetree_content(struct parsetree *cmd_info)
 {
-        if (cmdline[0] == '\0')
+        free(cmd_info->token_array);
+        free(cmd_info->rawline);
+        free(cmd_info->modline);
+}
+
+int parser(const char *cmdline, struct parsetree *cmd_info)
+{
+        char **token_array = malloc(sizeof(char*) * TOKEN_ARRAY_SIZE);
+        char *modline = strdup(cmdline);
+        cmd_info->modline = modline;
+        cmd_info->rawline = strdup(cmdline);
+        cmd_info->token_array = token_array;
+
+        if (modline[0] == '\0')
                 return -1;
-        int cmd_len = tokenize(cmdline, token_array);
+        int cmd_len = tokenize(modline, token_array);
         if (buildtree(token_array, cmd_info->list, &(cmd_info->count)) != 0){
 	        invalid_input();
                 return -1;
@@ -75,7 +87,12 @@ int parser(char cmdline[], struct parsetree *cmd_info)
 	return 0;
 }
 
-/* build the syyntax tree, although it is not a tree in this case */
+/* 
+ * build the syyntax tree, although it is not a tree in this case
+ * list[] will becaome a array of pointer to commands (which in turn is array 
+ * of char*),deliminated by NULL pointers, and expected to be linked with pipes
+ */
+
 int buildtree(char **tokens, char **list[], int *count)
 {
         for (int i = 0; i < CMD_LIST_LEN - 1; i++){
@@ -126,7 +143,7 @@ int cmdtok(char ***tokens_ptr, char ***target)
         } while (*tokens && !is_seperator(*tokens));
 
         if (*tokens){
-                /* reach a pipe */
+                /* reach a pipe, replace ptr to "|" to NULL ptr */
 		*tokens = NULL;
 		*tokens_ptr = tokens + 1;
 		return 0;

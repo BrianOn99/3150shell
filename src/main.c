@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <signal.h>
+#include "setsig.h"
 #include "parser.h"
 #include "interpreter.h"
 
@@ -40,19 +41,33 @@ void pr_prompt()
 	printf("[3150 shell:%s]$ ", dirname);
 	free(dirname);
 }
+void wait_foreground()
+{
+        int my_pgid = getpgrp();
+        while (tcgetpgrp (0) != my_pgid)
+                kill (- my_pgid, SIGTTIN);
+}
+
+void set_ownpgrp()
+{
+        int my_pgid = getpgrp();
+        if (setpgid(0, 0) == -1) {
+                perror("setpgid");
+                exit(1);
+        }
+
+        tcsetpgrp(0, my_pgid);
+}
+
 void initialize()
 {
+        wait_foreground();
+        setsig();
+        set_ownpgrp();
+        job_queue_init();
         /*
-        signal(SIGINT, SIG_IGN);
-        signal(SIGTERM, SIG_IGN);
-        signal(SIGQUIT, SIG_IGN);
-        signal(SIGTSTP, SIG_IGN);
-        */
-
-        /*
-         * TODO: (some in phase 2)
+         * TODO:
          * initialize env PATH (See specification P.9)
-         * ignore some signals (sigint, etc)
          * change behavior of sigchld
          */
 }
@@ -74,4 +89,5 @@ void main(void)
 {
         initialize();
         mainloop();
+        job_queue_init();
 }

@@ -9,6 +9,10 @@
 #include "setsig.h"
 #include "interpreter.h"
 
+#define PGID 0
+#define JOBID 1
+
+static int jobno = 0;
 static TAILQ_HEAD(tailhead, job) head;
  
 void job_queue_init()
@@ -68,6 +72,8 @@ int bn_jobs(char* cmdargv[])
         if (!check_cmdlen(cmdargv, 1, "jobs"))
                 return 0;
 
+        update_job_queue();
+
         struct job *jp;
         for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
                 printf("job: %s\n", jp->rawline);
@@ -82,6 +88,46 @@ int bn_exit(char* cmdargv[])
 
         printf("[ Shell Terminated ]\n");
         exit(0);
+}
+
+struct job *getjob(int id, int key)
+{
+        struct job *jp;
+        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
+                int res;
+                if (key == PGID)
+                        res = (id == jp->pgid);
+                if (key == JOBID)
+                        res = (id == jp->jobid);
+
+                if (res)
+                        return jp;
+        }
+
+        fprintf(stderr, "no indicated id %s\n", id);
+        return NULL;
+}
+
+void rmjob(struct job *j)
+{
+        TAILQ_REMOVE(&head, j, entries);
+}
+
+void update_job_queue()
+{
+        int status;
+        struct job *jp;
+
+        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
+                while (waitpid(-(jp->pgid), &status, WUNTRACED|WNOHANG)) {
+                        if WIFEXITED(status)
+                                jp->remain--;
+                        if (jp->remain == 0) {
+                                rmjob(jp);
+                                break;
+                        }
+                }
+        }
 }
 
 int run_builtin(char **cmd)
@@ -161,6 +207,8 @@ int interpreter(struct parsetree *cmd_info)
 
         jobnow->pgid = 0;
         jobnow->rawline = strdup(cmd_info->rawline);
+        jobnow->remain = cmd_info->count;
+        jobnow->jobid = jobno++;
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
 
@@ -209,6 +257,7 @@ int interpreter(struct parsetree *cmd_info)
                 } else if (WIFSTOPPED(status)) {
                         printf("DEBUG ONLY: child stopped\n");
                         TAILQ_INSERT_TAIL(&head, jobnow, entries);
+                        break;
                 }
         }
 

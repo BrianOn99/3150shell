@@ -13,7 +13,6 @@ static TAILQ_HEAD(tailhead, job) head;
  
 void job_queue_init()
 {
-
         TAILQ_INIT(&head);
 }
 
@@ -34,7 +33,7 @@ int cmdlen(char** cmdargv)
 int check_cmdlen(char* cmdargv[], int len, const char *cmdname)
 {
         int cmdargc = cmdlen(cmdargv);
-        if (cmdargc != len){
+        if (cmdargc != len) {
                 /*
                  * Error SHOULD be printed to stderr, but P.21 require stdout
                  * I am Very reluctant to do so, it is ugly
@@ -104,14 +103,21 @@ int run_external(char* cmdargv[], struct iofd inoutfd, pid_t pgid)
                         pgid = pid;
                 setpgid (pid, pgid);
                 tcsetpgrp(0, pgid);
-                dup2(inoutfd.in, 0);
-                dup2(inoutfd.out, 1);
-                //close(inoutfd.in);
-                //close(inoutfd.out);
+
+                if (inoutfd.in != 0) {
+                        dup2(inoutfd.in, 0);
+                        close(inoutfd.in);
+                }
+                if (inoutfd.out != 1) {
+                        dup2(inoutfd.out, 1);
+                        close(inoutfd.out);
+                }
+
                 unsetsig();
                 execvp(cmdargv[0], cmdargv);
                 perror("exec");
                 exit(-1);
+
         } else {
                 return pid;
         }
@@ -119,7 +125,6 @@ int run_external(char* cmdargv[], struct iofd inoutfd, pid_t pgid)
 
 static struct cmdmapping bn_cmdmap[] =
 {
-        /* TODO: store the function instead of NULL */
         {"cd", bn_cd},
         {"exit", bn_exit},
         {"fg", bn_fg},
@@ -159,7 +164,7 @@ int interpreter(struct parsetree *cmd_info)
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
 
-        for (int i=0; i+1 < cmd_info->count; i++){
+        for (int i=0; i+1 < cmd_info->count; i++) {
                 int fildes[2];
 
                 if (pipe(fildes) == -1){
@@ -171,9 +176,9 @@ int interpreter(struct parsetree *cmd_info)
                 inoutfds[i+1].in = fildes[0];
         }
 
-        if (cmd_info->count > 1){
-                for (int i=0; i < cmd_info->count; i++){
-                        if (classify(list[i][0], NULL) == builtin){
+        if (cmd_info->count > 1) {
+                for (int i=0; i < cmd_info->count; i++) {
+                        if (classify(list[i][0], NULL) == builtin) {
                                 printf("Error: invalid input command line\n");
                                 return -1;
                         }
@@ -184,7 +189,7 @@ int interpreter(struct parsetree *cmd_info)
                         return eval(list[0]);
         }
 
-        for (int i=0; i < cmd_info->count; i++){
+        for (int i=0; i < cmd_info->count; i++) {
                 pid_t chldpid = run_external(list[i], inoutfds[i], jobnow->pgid);
                 if (!jobnow->pgid)
                         jobnow->pgid = chldpid;
@@ -192,7 +197,7 @@ int interpreter(struct parsetree *cmd_info)
                 tcsetpgrp(0, jobnow->pgid);
         }
 
-        for (int i=0; i < cmd_info->count; i++){
+        for (int i=0; i < cmd_info->count; i++) {
                 int status;
                 if (waitpid(- jobnow->pgid, &status, WUNTRACED) == -1) {
                         if (errno == ECHILD)
@@ -202,7 +207,7 @@ int interpreter(struct parsetree *cmd_info)
                 } else if (WIFEXITED(status)) {
                         //return WEXITSTATUS(status);
                 } else if (WIFSTOPPED(status)) {
-                        printf("child stopped\n");
+                        printf("DEBUG ONLY: child stopped\n");
                         TAILQ_INSERT_TAIL(&head, jobnow, entries);
                 }
         }

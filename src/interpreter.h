@@ -11,6 +11,7 @@ struct cmdmapping {
 struct job {
         char *rawline;
         int remain;
+        int awake;
         int jobid;
         pid_t pgid;
         TAILQ_ENTRY(job) entries;
@@ -20,3 +21,4 @@ void job_queue_init();
 int interpreter(struct parsetree *cmd_info);
 enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval);
 void update_job_queue();
+int wait_job(struct job *j);

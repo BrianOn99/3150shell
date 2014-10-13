@@ -6,9 +6,9 @@ CPPFLAGS = -g --std=gnu99 -I.
 3150sh: main.c parser.o interpreter.o setsig.o
 	gcc -g $^ -o $@
 
-interpreter.o: parser.h
+interpreter.o: parser.h interpreter.h
 
-test: test.c parser.o
+parser.o: parser.h
 
 .PHONY: clean
 

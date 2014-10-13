@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <unistd.h>
 #include <errno.h>
 #include <errno.h>
@@ -64,6 +65,31 @@ int bn_fg(char* cmdargv[])
 {
         if (!check_cmdlen(cmdargv, 2, "fg"))
                 return 0;
+
+        char *rest;
+        long int index = strtol(cmdargv[1], &rest, 10);
+
+        if (rest == cmdargv[1] || *rest != '\0' || index < 1){
+                fprintf(stderr, "jobs: Invalid job number\n");
+                return -1;
+        }
+
+        struct job *jp = head.tqh_first;
+        for (int i=1; i < index; i++) {
+                jp = jp->entries.tqe_next;
+                if (jp == NULL) {
+                        fprintf(stderr, "job out of range\n");
+                        return -1;
+                }
+        }
+
+        tcsetpgrp(0, jp->pgid);
+        kill(-(jp->pgid), SIGCONT);
+        wait_job(jp);
+
+        if (tcsetpgrp(0, getpgid(0)) == -1)
+                perror("tcsetpgrp");
+
         return 1;
 }
 
@@ -75,9 +101,10 @@ int bn_jobs(char* cmdargv[])
         update_job_queue();
 
         struct job *jp;
-        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
-                printf("job: %s\n", jp->rawline);
-        }
+        int c = 1;
+        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next)
+                printf("[%d] %s\n", c++, jp->rawline);
+        
         return 1;
 }
  
@@ -86,31 +113,19 @@ int bn_exit(char* cmdargv[])
         if (!check_cmdlen(cmdargv, 1, "exit"))
                 return 0;
 
+        update_job_queue();
+        if (head.tqh_first != NULL) {
+                puts("There is at least one suspended job");
+                return 0;
+        }
         printf("[ Shell Terminated ]\n");
         exit(0);
-}
-
-struct job *getjob(int id, int key)
-{
-        struct job *jp;
-        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
-                int res;
-                if (key == PGID)
-                        res = (id == jp->pgid);
-                if (key == JOBID)
-                        res = (id == jp->jobid);
-
-                if (res)
-                        return jp;
-        }
-
-        fprintf(stderr, "no indicated id %s\n", id);
-        return NULL;
 }
 
 void rmjob(struct job *j)
 {
         TAILQ_REMOVE(&head, j, entries);
+        free(j);
 }
 
 void update_job_queue()
@@ -120,7 +135,7 @@ void update_job_queue()
 
         for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
                 while (waitpid(-(jp->pgid), &status, WUNTRACED|WNOHANG)) {
-                        if WIFEXITED(status)
+                        if (WIFEXITED(status) || WIFSIGNALED(status))
                                 jp->remain--;
                         if (jp->remain == 0) {
                                 rmjob(jp);
@@ -198,6 +213,27 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
         return external;
 }
 
+int wait_job(struct job *j)
+{
+        int status;
+        if (waitpid(-(j->pgid), &status, WUNTRACED) == -1) {
+                if (errno == ECHILD)
+                        return 0;
+                else
+                        return -1;
+        } else if (WIFEXITED(status)) {
+                //return WEXITSTATUS(status);
+        } else if (WIFSTOPPED(status)) {
+                printf("DEBUG ONLY: child stopped\n");
+                if (--(j->awake) == 0) {
+                        TAILQ_INSERT_TAIL(&head, j, entries);
+                        return 0;
+                }
+        }
+
+}
+
+
 /* master function of this library */
 int interpreter(struct parsetree *cmd_info)
 {
@@ -208,6 +244,7 @@ int interpreter(struct parsetree *cmd_info)
         jobnow->pgid = 0;
         jobnow->rawline = strdup(cmd_info->rawline);
         jobnow->remain = cmd_info->count;
+        jobnow->awake = cmd_info->count;
         jobnow->jobid = jobno++;
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
@@ -245,20 +282,9 @@ int interpreter(struct parsetree *cmd_info)
                 tcsetpgrp(0, jobnow->pgid);
         }
 
-        for (int i=0; i < cmd_info->count; i++) {
-                int status;
-                if (waitpid(- jobnow->pgid, &status, WUNTRACED) == -1) {
-                        if (errno == ECHILD)
-                                break;
-                        else
-                                return -1;
-                } else if (WIFEXITED(status)) {
-                        //return WEXITSTATUS(status);
-                } else if (WIFSTOPPED(status)) {
-                        printf("DEBUG ONLY: child stopped\n");
-                        TAILQ_INSERT_TAIL(&head, jobnow, entries);
+        while (1) {
+                if (wait_job(jobnow) == 0)
                         break;
-                }
         }
 
         if (tcsetpgrp(0, getpgid(0)) == -1)

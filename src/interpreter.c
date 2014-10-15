@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <termios.h>
 #include "setsig.h"
 #include "interpreter.h"
 
@@ -15,10 +16,12 @@
 
 static int jobno = 0;
 static TAILQ_HEAD(tailhead, job) head;
+struct termios shell_tmodes;
  
-void job_queue_init()
+void interpreter_init()
 {
         TAILQ_INIT(&head);
+        tcgetattr(0, &shell_tmodes);
 }
 
 enum cmd_type { builtin, external };
@@ -73,6 +76,8 @@ int bn_fg(char* cmdargv[])
                 fprintf(stderr, "jobs: Invalid job number\n");
                 return -1;
         }
+
+        update_job_queue();
 
         struct job *jp = head.tqh_first;
         for (int i=1; i < index; i++) {
@@ -216,20 +221,26 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
 int wait_job(struct job *j)
 {
         int status;
-        if (waitpid(-(j->pgid), &status, WUNTRACED) == -1) {
-                if (errno == ECHILD)
-                        return 0;
-                else
-                        return -1;
-        } else if (WIFEXITED(status)) {
-                //return WEXITSTATUS(status);
-        } else if (WIFSTOPPED(status)) {
-                printf("DEBUG ONLY: child stopped\n");
-                if (--(j->awake) == 0) {
-                        TAILQ_INSERT_TAIL(&head, j, entries);
-                        return 0;
+        while (waitpid(-(j->pgid), &status, WUNTRACED) != -1) {
+                if (WIFEXITED(status)) {
+                        j->remain--;
+                        j->awake--;
+                        //return WEXITSTATUS(status);
+                } else if (WIFSTOPPED(status)) {
+                        printf("DEBUG ONLY: child stopped\n");
+                        if (--(j->awake) == 0) {
+                                TAILQ_INSERT_TAIL(&head, j, entries);
+                                return 0;
+                        }
                 }
         }
+
+        if (errno == ECHILD)
+                return 0;
+        else
+                return -1;
+
+        tcsetattr(0, TCSADRAIN, &shell_tmodes);
 
 }
 

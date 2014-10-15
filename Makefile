@@ -3,7 +3,7 @@ vpath %.h src
 
 CPPFLAGS = -g --std=gnu99 -I.
 
-3150sh: main.c parser.o interpreter.o setsig.o
+3150sh: main.c parser.o interpreter.o setsig.o globexpand.o
 	gcc -g $^ -o $@
 
 interpreter.o: parser.h interpreter.h

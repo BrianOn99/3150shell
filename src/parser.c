@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "globexpand.h"
 #include "parser.h"
 #define TOKEN_ARRAY_SIZE (MAX_CMD_LEN /2)
 
@@ -64,23 +65,29 @@ int tokenize(char cmdline[], char *token_store[])
 
 void free_parsetree_content(struct parsetree *cmd_info)
 {
-        free(cmd_info->token_array);
         free(cmd_info->rawline);
-        free(cmd_info->modline);
+        globfree(cmd_info->tokens_pglob);
+        free(cmd_info->tokens_pglob);
 }
 
 int parser(const char *cmdline, struct parsetree *cmd_info)
 {
         char **token_array = malloc(sizeof(char*) * TOKEN_ARRAY_SIZE);
         char *modline = strdup(cmdline);
-        cmd_info->modline = modline;
         cmd_info->rawline = strdup(cmdline);
-        cmd_info->token_array = token_array;
+
+        glob_t *pglob = malloc(sizeof(glob_t));
 
         if (modline[0] == '\0')
                 return -1;
         int cmd_len = tokenize(modline, token_array);
-        if (buildtree(token_array, cmd_info->list, &(cmd_info->count)) != 0){
+
+        glob_expand(token_array, pglob);
+        free(modline);
+        cmd_info->token_array = pglob->gl_pathv;
+        cmd_info->tokens_pglob = pglob;
+
+        if (buildtree(cmd_info->token_array, cmd_info->list, &(cmd_info->count)) != 0){
 	        invalid_input();
                 return -1;
 	}
@@ -88,7 +95,7 @@ int parser(const char *cmdline, struct parsetree *cmd_info)
 }
 
 /* 
- * build the syyntax tree, although it is not a tree in this case
+ * build the syntax tree, although it is not a tree in this case
  * list[] will becaome a array of pointer to commands (which in turn is array 
  * of char*),deliminated by NULL pointers, and expected to be linked with pipes
  */

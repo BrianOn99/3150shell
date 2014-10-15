@@ -41,6 +41,7 @@ void pr_prompt()
 	printf("[3150 shell:%s]$ ", dirname);
 	free(dirname);
 }
+
 void wait_foreground()
 {
         int my_pgid = getpgrp();
@@ -64,11 +65,10 @@ void initialize()
         wait_foreground();
         setsig();
         set_ownpgrp();
-        job_queue_init();
+        interpreter_init();
         /*
          * TODO:
          * initialize env PATH (See specification P.9)
-         * change behavior of sigchld
          */
 }
 
@@ -89,5 +89,4 @@ void main(void)
 {
         initialize();
         mainloop();
-        job_queue_init();
 }

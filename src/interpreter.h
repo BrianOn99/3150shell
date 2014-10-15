@@ -17,7 +17,7 @@ struct job {
         TAILQ_ENTRY(job) entries;
 };
 
-void job_queue_init();
+void interpreter_init();
 int interpreter(struct parsetree *cmd_info);
 enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval);
 void update_job_queue();

@@ -80,17 +80,20 @@ int bn_fg(char* cmdargv[])
         update_job_queue();
 
         struct job *jp = head.tqh_first;
-        for (int i=1; i < index; i++) {
-                jp = jp->entries.tqe_next;
+        for (int i=1;; i++) {
                 if (jp == NULL) {
                         fprintf(stderr, "job out of range\n");
                         return -1;
                 }
+                if (i == index)
+                        break;
+                jp = jp->entries.tqe_next;
         }
 
         tcsetpgrp(0, jp->pgid);
         kill(-(jp->pgid), SIGCONT);
-        wait_job(jp, 0);
+        jp->awake = jp->remain;
+        wait_job(jp);
 
         if (tcsetpgrp(0, getpgid(0)) == -1)
                 perror("tcsetpgrp");
@@ -131,32 +134,6 @@ void rmjob(struct job *j)
 {
         TAILQ_REMOVE(&head, j, entries);
         free(j);
-}
-
-int update_job_queue()
-{
-        int status;
-        struct job *jp;
-
-        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
-                int ret;
-                do {
-                        ret = waitpid(-(jp->pgid), &status, WUNTRACED|WNOHANG);
-                        if (WIFEXITED(status) || WIFSIGNALED(status)) {
-                                jp->remain--;
-                                jp->awake--;
-                        }
-
-                        if (ret ==-1) {
-                                if (errno == ECHILD) {
-                                        rmjob(jp);
-                                        return 0;
-                                } else {
-                                        return -1;
-                                }
-                        }
-                } while ((ret != 0) && (ret != -1));
-        }
 }
 
 int run_builtin(char **cmd)
@@ -227,39 +204,62 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
         return external;
 }
 
-int wait_job(struct job *jp, int insert)
+struct job *getjob(pid_t pid)
 {
-        int status;
-        while (waitpid(-(jp->pgid), &status, WUNTRACED) != -1) {
-                if (WIFEXITED(status)) {
-                        jp->awake--;
-                } else if (WIFSTOPPED(status)) {
-                        printf("\nDEBUG ONLY: child stopped\n");
-                        if (--(jp->awake) <= 0) {
-                                /* TODO:
-                                 * I original state == 0, but there is a big
-                                 * that, after multiple stop, awake is less
-                                 * than 0. this is just a temporary bug fix,
-                                 * and may introduce other bugs
-                                 */
-                                if (insert)
-                                        TAILQ_INSERT_TAIL(&head, jp, entries);
-                                return 0;
-                        }
+        struct job *jp;
+        for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
+                for (int i=0; i < jp->count; i++) {
+                        if (jp->pid[i] == pid)
+                                return jp;
                 }
         }
+}
 
-        if (errno == ECHILD) {
+void jobupdate(struct job *jp, int status)
+{
+        if (WIFSTOPPED(status))
+                jp->awake--;
+        if (WIFSIGNALED(status) | WIFEXITED(status)) {
+                jp->awake--;
+                jp->remain--;
+        }
+        if (jp->remain <= 0)
                 rmjob(jp);
-                return 0;
-        } else {
-                return -1;
+}
+ 
+int update_job_queue()
+{
+        int status;
+        int pid;
+        while (1) {
+                pid = waitpid(WAIT_ANY, &status, WUNTRACED|WNOHANG);
+                if (pid == 0)
+                        return 0;
+                if (pid == -1) {
+                        perror("wait_job");
+                        return -1;
+                }
+
+                jobupdate(getjob(pid), status);
+        }
+}
+
+int wait_job(struct job *jp)
+{
+        int status;
+        int pid;
+        while (jp->awake > 0) {
+                pid = waitpid(WAIT_ANY, &status, WUNTRACED);
+                if (pid == -1) {
+                        perror("wait_job");
+                        return -1;
+                }
+
+                jobupdate(getjob(pid), status);
         }
 
         tcsetattr(0, TCSADRAIN, &shell_tmodes);
-
 }
-
 
 /* master function of this library */
 int interpreter(struct parsetree *cmd_info)
@@ -273,6 +273,8 @@ int interpreter(struct parsetree *cmd_info)
         jobnow->remain = cmd_info->count;
         jobnow->awake = cmd_info->count;
         jobnow->jobid = jobno++;
+        jobnow->pid = malloc(sizeof(pid_t) * cmd_info->count);
+        jobnow->count = cmd_info->count;
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
 
@@ -305,14 +307,14 @@ int interpreter(struct parsetree *cmd_info)
                 pid_t chldpid = run_external(list[i], inoutfds[i], jobnow->pgid);
                 if (!jobnow->pgid)
                         jobnow->pgid = chldpid;
+                jobnow->pid[i] = chldpid;
                 setpgid(chldpid, jobnow->pgid);
                 tcsetpgrp(0, jobnow->pgid);
         }
 
-        while (1) {
-                if (wait_job(jobnow, 1) == 0)
-                        break;
-        }
+        TAILQ_INSERT_TAIL(&head, jobnow, entries);
+
+        wait_job(jobnow);
 
         if (tcsetpgrp(0, getpgid(0)) == -1)
                 perror("tcsetpgrp");

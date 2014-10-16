@@ -90,7 +90,7 @@ int bn_fg(char* cmdargv[])
 
         tcsetpgrp(0, jp->pgid);
         kill(-(jp->pgid), SIGCONT);
-        wait_job(jp);
+        wait_job(jp, 0);
 
         if (tcsetpgrp(0, getpgid(0)) == -1)
                 perror("tcsetpgrp");
@@ -133,20 +133,29 @@ void rmjob(struct job *j)
         free(j);
 }
 
-void update_job_queue()
+int update_job_queue()
 {
         int status;
         struct job *jp;
 
         for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next) {
-                while (waitpid(-(jp->pgid), &status, WUNTRACED|WNOHANG)) {
-                        if (WIFEXITED(status) || WIFSIGNALED(status))
+                int ret;
+                do {
+                        ret = waitpid(-(jp->pgid), &status, WUNTRACED|WNOHANG);
+                        if (WIFEXITED(status) || WIFSIGNALED(status)) {
                                 jp->remain--;
-                        if (jp->remain == 0) {
-                                rmjob(jp);
-                                break;
+                                jp->awake--;
                         }
-                }
+
+                        if (ret ==-1) {
+                                if (errno == ECHILD) {
+                                        rmjob(jp);
+                                        return 0;
+                                } else {
+                                        return -1;
+                                }
+                        }
+                } while ((ret != 0) && (ret != -1));
         }
 }
 
@@ -218,27 +227,34 @@ enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
         return external;
 }
 
-int wait_job(struct job *j)
+int wait_job(struct job *jp, int insert)
 {
         int status;
-        while (waitpid(-(j->pgid), &status, WUNTRACED) != -1) {
+        while (waitpid(-(jp->pgid), &status, WUNTRACED) != -1) {
                 if (WIFEXITED(status)) {
-                        j->remain--;
-                        j->awake--;
-                        //return WEXITSTATUS(status);
+                        jp->awake--;
                 } else if (WIFSTOPPED(status)) {
-                        printf("DEBUG ONLY: child stopped\n");
-                        if (--(j->awake) == 0) {
-                                TAILQ_INSERT_TAIL(&head, j, entries);
+                        printf("\nDEBUG ONLY: child stopped\n");
+                        if (--(jp->awake) <= 0) {
+                                /* TODO:
+                                 * I original state == 0, but there is a big
+                                 * that, after multiple stop, awake is less
+                                 * than 0. this is just a temporary bug fix,
+                                 * and may introduce other bugs
+                                 */
+                                if (insert)
+                                        TAILQ_INSERT_TAIL(&head, jp, entries);
                                 return 0;
                         }
                 }
         }
 
-        if (errno == ECHILD)
+        if (errno == ECHILD) {
+                rmjob(jp);
                 return 0;
-        else
+        } else {
                 return -1;
+        }
 
         tcsetattr(0, TCSADRAIN, &shell_tmodes);
 
@@ -294,7 +310,7 @@ int interpreter(struct parsetree *cmd_info)
         }
 
         while (1) {
-                if (wait_job(jobnow) == 0)
+                if (wait_job(jobnow, 1) == 0)
                         break;
         }
 

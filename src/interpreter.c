@@ -90,11 +90,13 @@ int bn_fg(char* cmdargv[])
                 jp = jp->entries.tqe_next;
         }
 
+        /* wake the job up, set it foreground, and wait */
         tcsetpgrp(0, jp->pgid);
         kill(-(jp->pgid), SIGCONT);
         jp->awake = jp->remain;
         wait_job(jp);
 
+        /* reset shell as foregroung */
         if (tcsetpgrp(0, getpgid(0)) == -1)
                 perror("tcsetpgrp");
 
@@ -130,10 +132,19 @@ int bn_exit(char* cmdargv[])
         exit(0);
 }
 
-void rmjob(struct job *j)
+static struct cmdmapping bn_cmdmap[] =
 {
-        TAILQ_REMOVE(&head, j, entries);
-        free(j);
+        {"cd", bn_cd},
+        {"exit", bn_exit},
+        {"fg", bn_fg},
+        {"jobs", bn_jobs},
+        {NULL, NULL}
+};
+
+void rmjob(struct job *jp)
+{
+        TAILQ_REMOVE(&head, jp, entries);
+        free(jp);
 }
 
 int run_builtin(char **cmd)
@@ -175,18 +186,9 @@ int run_external(char* cmdargv[], struct iofd inoutfd, pid_t pgid)
         }
 }
 
-static struct cmdmapping bn_cmdmap[] =
-{
-        {"cd", bn_cd},
-        {"exit", bn_exit},
-        {"fg", bn_fg},
-        {"jobs", bn_jobs},
-        {NULL, NULL}
-};
-
 /* 
  * classify the command: builtin or external program
- * A function pointer will be stored in backeval, which implement the action
+ * for builtin, function pointer will be stored in backeval, which implement the action
  */
 enum cmd_type classify(char *given_cmdname, cmd_evaluater *backeval)
 {
@@ -213,6 +215,9 @@ struct job *getjob(pid_t pid)
                                 return jp;
                 }
         }
+
+        fprintf(stderr, "Error getjob(): job not found\n");
+        return NULL;
 }
 
 void jobupdate(struct job *jp, int status)
@@ -236,11 +241,12 @@ int update_job_queue()
                 if (pid == 0)
                         return 0;
                 if (pid == -1) {
-                        perror("wait_job");
                         return -1;
                 }
 
-                jobupdate(getjob(pid), status);
+                struct job *jp = getjob(pid);
+                if (jp != NULL)
+                        jobupdate(jp, status);
         }
 }
 
@@ -251,7 +257,7 @@ int wait_job(struct job *jp)
         while (jp->awake > 0) {
                 pid = waitpid(WAIT_ANY, &status, WUNTRACED);
                 if (pid == -1) {
-                        perror("wait_job");
+                        perror("waitpid");
                         return -1;
                 }
 
@@ -259,6 +265,26 @@ int wait_job(struct job *jp)
         }
 
         tcsetattr(0, TCSADRAIN, &shell_tmodes);
+}
+
+int mkpipe(struct iofd *iofds, int len)
+{
+        for (int i=0; i+1 < len; i++) {
+                int fildes[2];
+
+                if (pipe(fildes) == -1){
+                        perror("Creating pipe");
+                        return -1;
+                }
+
+                iofds[i].out = fildes[1];
+                iofds[i+1].in = fildes[0];
+        }
+}
+
+void freefds(struct iofd *iofds)
+{
+        /* TODO: free the file descriptors */
 }
 
 /* master function of this library */
@@ -278,17 +304,8 @@ int interpreter(struct parsetree *cmd_info)
         inoutfds[0].in = 0;
         inoutfds[cmd_info->count-1].out = 1;
 
-        for (int i=0; i+1 < cmd_info->count; i++) {
-                int fildes[2];
-
-                if (pipe(fildes) == -1){
-                        perror("Creating pipe");
-                        return -1;
-                }
-
-                inoutfds[i].out = fildes[1];
-                inoutfds[i+1].in = fildes[0];
-        }
+        if (mkpipe(inoutfds, cmd_info->count) == -1)
+                return -1;
 
         if (cmd_info->count > 1) {
                 for (int i=0; i < cmd_info->count; i++) {
@@ -320,5 +337,5 @@ int interpreter(struct parsetree *cmd_info)
                 perror("tcsetpgrp");
 
         free_parsetree_content(cmd_info);
-        /* TODO: close fd */
+        freefds(inoutfds);
 }

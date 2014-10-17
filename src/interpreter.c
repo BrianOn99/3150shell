@@ -11,10 +11,6 @@
 #include "setsig.h"
 #include "interpreter.h"
 
-#define PGID 0
-#define JOBID 1
-
-static int jobno = 0;
 static TAILQ_HEAD(tailhead, job) head;
 struct termios shell_tmodes;
  
@@ -182,6 +178,10 @@ int run_external(char* cmdargv[], struct iofd inoutfd, pid_t pgid)
                 exit(-1);
 
         } else {
+                if (inoutfd.in != 0)
+                        close(inoutfd.in);
+                if (inoutfd.out != 1)
+                        close(inoutfd.out);
                 return pid;
         }
 }
@@ -282,11 +282,6 @@ int mkpipe(struct iofd *iofds, int len)
         }
 }
 
-void freefds(struct iofd *iofds)
-{
-        /* TODO: free the file descriptors */
-}
-
 /* master function of this library */
 int interpreter(struct parsetree *cmd_info)
 {
@@ -298,7 +293,6 @@ int interpreter(struct parsetree *cmd_info)
         jobnow->rawline = strdup(cmd_info->rawline);
         jobnow->remain = cmd_info->count;
         jobnow->awake = cmd_info->count;
-        jobnow->jobid = jobno++;
         jobnow->pid = malloc(sizeof(pid_t) * cmd_info->count);
         jobnow->count = cmd_info->count;
         inoutfds[0].in = 0;
@@ -337,5 +331,4 @@ int interpreter(struct parsetree *cmd_info)
                 perror("tcsetpgrp");
 
         free_parsetree_content(cmd_info);
-        freefds(inoutfds);
 }

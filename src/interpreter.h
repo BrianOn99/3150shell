@@ -13,7 +13,6 @@ struct job {
         char *rawline;
         int remain;
         int awake;
-        int jobid;
         pid_t *pid;
         pid_t pgid;
         int count;

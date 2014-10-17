@@ -7,7 +7,9 @@
 
 #define is_argchar(c) !invalid_argchar[c]
 
-
+/* an array of which the value is 1 wheneve the index is invalid.
+ * his is designed for efficient validating., preventing repeated char comparison.
+ */
 char invalid_argchar[256] = {['\t'] = 1, ['<'] = 1, ['>'] = 1, ['|'] = 1,
                              ['!'] = 1, ['\''] = 1, ['`'] = 1, ['"'] = 1 };
 
@@ -49,6 +51,8 @@ int valid_cmdline(char **tokens)
         return 1;
 }
 
+/* split  cmdline as tokens and sore pointer to tokens in token_store
+ */
 int tokenize(char cmdline[], char *token_store[])
 {
         token_store[0] = strtok(cmdline, " ");
@@ -70,6 +74,8 @@ void free_parsetree_content(struct parsetree *cmd_info)
         free(cmd_info->tokens_pglob);
 }
 
+/* parse cmd_line into the parse tree cmd_info
+ * */
 int parser(const char *cmdline, struct parsetree *cmd_info)
 {
         char **token_array = malloc(sizeof(char*) * TOKEN_ARRAY_SIZE);

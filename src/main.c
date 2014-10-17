@@ -25,7 +25,6 @@ void getcmdline(char *buffer, size_t size)
                         fprintf(stderr, "error reading input\n");
                 } else {
                         /* ctrl-d pressed */
-                        /* TODO: exit the shell */
                         buffer[0] = '\0';
 			bn_exit((char *[]){"exit", NULL});
                 }
@@ -36,12 +35,13 @@ void getcmdline(char *buffer, size_t size)
 
 void pr_prompt()
 {
-        /* TODO: print out the prompt (See Specification P.4) */
 	char *dirname = get_current_dir_name();
 	printf("[3150 shell:%s]$ ", dirname);
 	free(dirname);
 }
 
+/* the shell wait itself to be foreground
+ */
 void wait_foreground()
 {
         int my_pgid = getpgrp();
@@ -49,6 +49,8 @@ void wait_foreground()
                 kill (- my_pgid, SIGTTIN);
 }
 
+/* move the shell to its own process proup
+ */
 void set_ownpgrp()
 {
         int my_pgid = getpgrp();

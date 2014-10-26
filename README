@@ -17,10 +17,15 @@ mainloop =>
 		buildtree
         interprter =>
                 classify (command classifier)
-                "builtin commands"  (partly exist)
-                "xternal program laucher"  (not yet exist)
+                "builtin commands"
+                "external program laucher"
+                
+Features
+========
 
-In the time of writing, it only classify command and print tokens.
+glob expand
+builtin command: fg, jobs, exit, cd
+pipes
 
 Compile
 =======

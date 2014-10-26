@@ -57,11 +57,14 @@ int bn_cd(char* cmdargv[])
                 return 0;
 
         chdir(cmdargv[1]);
+        /* TODO: output error when it cannot shdir */
         return 1;
 }
 
 int bn_fg(char* cmdargv[])
 {
+        /* TODO: all messages either not exsist or not conform to the specification
+         * */
         if (!check_cmdlen(cmdargv, 2, "fg"))
                 return 0;
 
@@ -111,6 +114,8 @@ int bn_jobs(char* cmdargv[])
         for (jp = head.tqh_first; jp != NULL; jp = jp->entries.tqe_next)
                 printf("[%d] %s\n", c++, jp->rawline);
         
+        /* TODO: print error for no job 
+         * */
         return 1;
 }
  
@@ -128,6 +133,8 @@ int bn_exit(char* cmdargv[])
         exit(0);
 }
 
+/* map command string to function
+ */
 static struct cmdmapping bn_cmdmap[] =
 {
         {"cd", bn_cd},

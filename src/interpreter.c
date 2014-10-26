@@ -141,6 +141,7 @@ void rmjob(struct job *jp)
 {
         TAILQ_REMOVE(&head, jp, entries);
         free(jp);
+        jp = NULL;
 }
 
 int run_builtin(char **cmd)
@@ -263,6 +264,11 @@ int wait_job(struct job *jp)
 
                 jobupdate(getjob(pid), status);
         }
+
+        /* This is is quick (and dirty?) way to print new line if job suspended
+         */
+        if (jp != NULL)
+                fputs("\n", stdout);
 
         tcsetattr(0, TCSADRAIN, &shell_tmodes);
 }
